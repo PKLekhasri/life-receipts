@@ -1,7 +1,7 @@
 import { LifeReceipt } from '../types/receipt';
 import { StoryConnection, ConnectionExplanation, GraphNode, GraphLink } from '../types/connection';
 import { getDifferenceInHours, formatTime } from '../utils/dateUtils';
-import { getCategoryTheme } from '../utils/categoryUtils';
+import { CONNECTION_CONFIG } from '../constants/configuration';
 
 /**
  * Calculates relationship score between two receipts based on:
@@ -16,37 +16,37 @@ export function calculatePairScore(r1: LifeReceipt, r2: LifeReceipt): { score: n
 
   // 1. Temporal Proximity
   const hoursDiff = getDifferenceInHours(r1.timestamp, r2.timestamp);
-  if (hoursDiff <= 0.5) {
-    score += 40;
+  if (hoursDiff <= CONNECTION_CONFIG.IMMEDIATE_SEQUENCE_HOURS) {
+    score += CONNECTION_CONFIG.IMMEDIATE_SEQUENCE_SCORE;
     reasons.push({
       type: 'temporal',
       label: 'Immediate Sequence',
       description: `Occurred within 30 minutes (${Math.round(hoursDiff * 60)} mins apart)`,
-      scoreContribution: 40
+      scoreContribution: CONNECTION_CONFIG.IMMEDIATE_SEQUENCE_SCORE
     });
-  } else if (hoursDiff <= 2) {
-    score += 30;
+  } else if (hoursDiff <= CONNECTION_CONFIG.SAME_WINDOW_HOURS) {
+    score += CONNECTION_CONFIG.SAME_WINDOW_SCORE;
     reasons.push({
       type: 'temporal',
       label: 'Same Window',
       description: `Occurred within 2 hours (${hoursDiff.toFixed(1)}h apart)`,
-      scoreContribution: 30
+      scoreContribution: CONNECTION_CONFIG.SAME_WINDOW_SCORE
     });
-  } else if (hoursDiff <= 6) {
-    score += 20;
+  } else if (hoursDiff <= CONNECTION_CONFIG.SAME_EVENING_HOURS) {
+    score += CONNECTION_CONFIG.SAME_EVENING_SCORE;
     reasons.push({
       type: 'temporal',
       label: 'Same Evening/Morning',
       description: `Occurred within 6 hours on same day`,
-      scoreContribution: 20
+      scoreContribution: CONNECTION_CONFIG.SAME_EVENING_SCORE
     });
-  } else if (hoursDiff <= 24) {
-    score += 10;
+  } else if (hoursDiff <= CONNECTION_CONFIG.SAME_DAY_HOURS) {
+    score += CONNECTION_CONFIG.SAME_DAY_SCORE;
     reasons.push({
       type: 'temporal',
       label: 'Same 24-Hour Cycle',
       description: `Occurred on the same date`,
-      scoreContribution: 10
+      scoreContribution: CONNECTION_CONFIG.SAME_DAY_SCORE
     });
   }
 
@@ -55,20 +55,20 @@ export function calculatePairScore(r1: LifeReceipt, r2: LifeReceipt): { score: n
     const loc1 = r1.location.toLowerCase();
     const loc2 = r2.location.toLowerCase();
     if (loc1 === loc2) {
-      score += 30;
+      score += CONNECTION_CONFIG.IDENTICAL_LOCATION_SCORE;
       reasons.push({
         type: 'spatial',
         label: 'Identical Location',
         description: `Shared place: "${r1.location}"`,
-        scoreContribution: 30
+        scoreContribution: CONNECTION_CONFIG.IDENTICAL_LOCATION_SCORE
       });
     } else if (loc1.includes(loc2) || loc2.includes(loc1) || (r1.latitude && r2.latitude && Math.abs(r1.latitude - r2.latitude) < 0.05)) {
-      score += 20;
+      score += CONNECTION_CONFIG.NEARBY_LOCATION_SCORE;
       reasons.push({
         type: 'spatial',
         label: 'Nearby Location',
         description: `Co-located in same neighborhood or hub`,
-        scoreContribution: 20
+        scoreContribution: CONNECTION_CONFIG.NEARBY_LOCATION_SCORE
       });
     }
   }
@@ -77,7 +77,7 @@ export function calculatePairScore(r1: LifeReceipt, r2: LifeReceipt): { score: n
   const tags1 = new Set(r1.tags.map(t => t.toLowerCase()));
   const sharedTags = r2.tags.filter(t => tags1.has(t.toLowerCase()));
   if (sharedTags.length > 0) {
-    const tagScore = Math.min(20, sharedTags.length * 10);
+    const tagScore = Math.min(CONNECTION_CONFIG.MAX_TAG_SCORE, sharedTags.length * CONNECTION_CONFIG.TAG_SCORE_PER_MATCH);
     score += tagScore;
     reasons.push({
       type: 'tag',
@@ -92,12 +92,12 @@ export function calculatePairScore(r1: LifeReceipt, r2: LifeReceipt): { score: n
     const p1 = new Set(r1.people.map(p => p.toLowerCase()));
     const sharedPeople = r2.people.filter(p => p1.has(p.toLowerCase()));
     if (sharedPeople.length > 0) {
-      score += 10;
+      score += CONNECTION_CONFIG.PEOPLE_OVERLAP_SCORE;
       reasons.push({
         type: 'entity',
         label: 'Shared People',
         description: `Together with ${sharedPeople.join(', ')}`,
-        scoreContribution: 10
+        scoreContribution: CONNECTION_CONFIG.PEOPLE_OVERLAP_SCORE
       });
     }
   }
@@ -112,7 +112,6 @@ export function detectConnections(receipts: LifeReceipt[]): StoryConnection[] {
   const connections: StoryConnection[] = [];
   const visited = new Set<string>();
 
-  // Sort chronologically
   const sorted = [...receipts].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
   for (let i = 0; i < sorted.length; i++) {
@@ -127,11 +126,10 @@ export function detectConnections(receipts: LifeReceipt[]): StoryConnection[] {
       const candidate = sorted[j];
       const hoursDiff = getDifferenceInHours(root.timestamp, candidate.timestamp);
       
-      // Stop checking if more than 8 hours apart to form coherent tight clusters
-      if (hoursDiff > 8) break;
+      if (hoursDiff > CONNECTION_CONFIG.MAX_CLUSTER_TIME_WINDOW_HOURS) break;
 
       const { score, reasons } = calculatePairScore(root, candidate);
-      if (score >= 35) { // Significant relationship threshold
+      if (score >= CONNECTION_CONFIG.SIGNIFICANT_CONNECTION_THRESHOLD) {
         cluster.push(candidate);
         totalScore += score;
         reasons.forEach(r => {
@@ -146,7 +144,6 @@ export function detectConnections(receipts: LifeReceipt[]): StoryConnection[] {
       cluster.forEach(r => visited.add(r.id));
       const primaryLoc = cluster.find(r => r.location)?.location || 'Various Locations';
       
-      // Calculate shared tags across cluster
       const tagCounts: Record<string, number> = {};
       cluster.forEach(r => r.tags.forEach(t => {
         tagCounts[t] = (tagCounts[t] || 0) + 1;
@@ -155,16 +152,13 @@ export function detectConnections(receipts: LifeReceipt[]): StoryConnection[] {
         .filter(([_, count]) => count >= 2)
         .map(([tag]) => tag);
 
-      // Category breakdown
       const catCounts: Record<string, number> = {};
       cluster.forEach(r => catCounts[r.category] = (catCounts[r.category] || 0) + 1);
       const dominantCategory = Object.entries(catCounts).sort((a, b) => b[1] - a[1])[0][0];
 
-      // Time window
       const timeStart = formatTime(cluster[0].timestamp);
       const timeEnd = formatTime(cluster[cluster.length - 1].timestamp);
 
-      // Generate suggested explainable title
       let title = `Connected Moments around ${primaryLoc}`;
       let suggestedNarrative = `These ${cluster.length} moments occurred close together around ${timeStart} to ${timeEnd}.`;
       
@@ -220,7 +214,7 @@ export function buildConnectionGraph(receipts: LifeReceipt[]): { nodes: GraphNod
       const r2 = receipts[j];
       const { score, reasons } = calculatePairScore(r1, r2);
 
-      if (score >= 35) {
+      if (score >= CONNECTION_CONFIG.SIGNIFICANT_CONNECTION_THRESHOLD) {
         links.push({
           source: r1.id,
           target: r2.id,
