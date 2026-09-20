@@ -1,17 +1,6 @@
 import { LifeReceipt, ReceiptCategory } from '../types/receipt';
-import { RAW_MOCK_RECEIPTS } from './mockReceipts';
-
-const VALID_CATEGORIES: ReceiptCategory[] = [
-  'Music',
-  'Movies',
-  'Places',
-  'Purchases',
-  'Photos',
-  'Messages',
-  'Searches',
-  'Events',
-  'Notes'
-];
+import { RAW_MOCK_RECEIPTS } from './raw/mockReceipts';
+import { ALL_RECEIPT_CATEGORIES } from '../constants/categories';
 
 /**
  * Normalizes raw receipt objects into a strictly typed, valid LifeReceipt model.
@@ -32,7 +21,7 @@ export function normalizeReceipt(raw: any, index: number): LifeReceipt {
 
   // Category normalization
   let category: ReceiptCategory = 'Notes';
-  if (raw.category && VALID_CATEGORIES.includes(raw.category as ReceiptCategory)) {
+  if (raw.category && ALL_RECEIPT_CATEGORIES.includes(raw.category as ReceiptCategory)) {
     category = raw.category as ReceiptCategory;
   } else if (raw.category) {
     const catLower = String(raw.category).toLowerCase();
@@ -90,6 +79,5 @@ export function normalizeReceipt(raw: any, index: number): LifeReceipt {
  */
 export function getNormalizedDataset(rawList: any[] = RAW_MOCK_RECEIPTS): LifeReceipt[] {
   const normalized = rawList.map((item, idx) => normalizeReceipt(item, idx));
-  // Sort chronologically ascending
   return normalized.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 }

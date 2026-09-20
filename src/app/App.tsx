@@ -1,20 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Navbar } from '../components/layout/Navbar';
-import { Footer } from '../components/layout/Footer';
+import { Navbar } from '../components/navigation/Navbar';
+import { Footer } from '../components/navigation/Footer';
 import { useReceipts } from '../hooks/useReceipts';
 import { HomePage } from '../pages/HomePage';
 import { ExplorerPage } from '../pages/ExplorerPage';
-import { ConnectionsView } from '../components/connections/ConnectionsView';
-import { PatternsView } from '../components/patterns/PatternsView';
-import { StoryChaptersView } from '../components/chapters/StoryChaptersView';
-import { LifeJourneyTimeline } from '../components/timeline/LifeJourneyTimeline';
+import { ConnectionsPage } from '../pages/ConnectionsPage';
+import { PatternsPage } from '../pages/PatternsPage';
+import { ChaptersPage } from '../pages/ChaptersPage';
+import { JourneyPage } from '../pages/JourneyPage';
 import { ReceiptDetailModal } from '../components/receipts/ReceiptDetailModal';
 import { StoryModeModal } from '../components/story/StoryModeModal';
 import { GlobalSearch } from '../components/search/GlobalSearch';
 import { DocumentationModal } from '../components/common/DocumentationModal';
 import { LifeReceipt } from '../types/receipt';
-import { StoryConnection } from '../types/connection';
-import { buildConnectionGraph } from '../engines/connectionEngine';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'explorer' | 'connections' | 'patterns' | 'chapters' | 'journey'>('overview');
@@ -32,10 +30,7 @@ export const App: React.FC = () => {
     stats
   } = useReceipts();
 
-  // Compute graph data for SVG connection map
-  const graphData = useMemo(() => buildConnectionGraph(receipts), [receipts]);
-
-  // Global hotkey Ctrl+K for search
+  // Global hotkey Ctrl+K / Cmd+K for search
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -83,22 +78,22 @@ export const App: React.FC = () => {
         )}
 
         {activeTab === 'connections' && (
-          <ConnectionsView
+          <ConnectionsPage
             connections={connections}
-            graphData={graphData}
+            receipts={receipts}
             onSelectReceipt={(r) => setSelectedReceipt(r)}
           />
         )}
 
         {activeTab === 'patterns' && (
-          <PatternsView
+          <PatternsPage
             patterns={patterns}
             onSelectReceipt={(r) => setSelectedReceipt(r)}
           />
         )}
 
         {activeTab === 'chapters' && (
-          <StoryChaptersView
+          <ChaptersPage
             chapters={chapters}
             onExploreChapter={() => setActiveTab('journey')}
             onSelectReceipt={(r) => setSelectedReceipt(r)}
@@ -106,14 +101,12 @@ export const App: React.FC = () => {
         )}
 
         {activeTab === 'journey' && (
-          <div className="py-4 space-y-6">
-            <LifeJourneyTimeline
-              receipts={receipts}
-              chapters={chapters}
-              onSelectReceipt={(r) => setSelectedReceipt(r)}
-              onSelectChapter={() => setActiveTab('chapters')}
-            />
-          </div>
+          <JourneyPage
+            receipts={receipts}
+            chapters={chapters}
+            onSelectReceipt={(r) => setSelectedReceipt(r)}
+            onSelectChapter={() => setActiveTab('chapters')}
+          />
         )}
       </main>
 

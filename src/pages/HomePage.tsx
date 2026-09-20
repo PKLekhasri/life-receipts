@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { LifeReceipt } from '../types/receipt';
 import { StoryConnection } from '../types/connection';
 import { StoryChapter } from '../types/chapter';
@@ -35,7 +35,7 @@ interface HomePageProps {
   onNavigateTab: (tab: any) => void;
 }
 
-export const HomePage: React.FC<HomePageProps> = ({
+export const HomePage: React.FC<HomePageProps> = React.memo(({
   receipts,
   connections,
   patterns,
@@ -46,7 +46,11 @@ export const HomePage: React.FC<HomePageProps> = ({
   onOpenStoryMode,
   onNavigateTab
 }) => {
-  const previewGraphData = buildConnectionGraph(receipts);
+  // MEMOIZE graph calculations to eliminate O(N^2) re-renders
+  const previewGraphData = useMemo(() => buildConnectionGraph(receipts), [receipts]);
+
+  // MEMOIZE preview receipts array
+  const previewReceipts = useMemo(() => receipts.slice(0, 6), [receipts]);
 
   return (
     <div className="space-y-16 py-4">
@@ -124,10 +128,10 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
 
         <ReceiptGrid
-          receipts={receipts.slice(0, 6)}
+          receipts={previewReceipts}
           onSelectReceipt={onSelectReceipt}
         />
       </section>
     </div>
   );
-};
+});

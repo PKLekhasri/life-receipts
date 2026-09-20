@@ -1,0 +1,34 @@
+[
+  {
+    "id": "rcpt-001",
+    "timestamp": "2026-01-05T23:15:00.000Z",
+    "category": "Music",
+    "title": "Midnight City",
+    "description": "Played ambient synthwave track while working on digital scrapbook design.",
+    "location": "Chennai Coastline",
+    "tags": ["ambient", "late-night", "creative", "focus"],
+    "source": "Spotify",
+    "duration": 243
+  },
+  {
+    "id": "rcpt-002",
+    "timestamp": "2026-01-05T23:42:00.000Z",
+    "category": "Searches",
+    "title": "best late night ambient music for deep focus",
+    "description": "Searched for electronic music tracks with atmospheric synth sounds.",
+    "location": "Chennai Coastline",
+    "tags": ["late-night", "focus", "music-discovery"],
+    "source": "Google Search"
+  },
+  {
+    "id": "rcpt-003",
+    "timestamp": "2026-01-06T00:10:00.000Z",
+    "category": "Purchases",
+    "title": "Double Espresso & Dark Roast",
+    "description": "Purchased midnight coffee refill at Craft Coffee Roasters drive-thru.",
+    "location": "Craft Coffee Roasters, Chennai",
+    "amount": 240,
+    "tags": ["coffee", "late-night", "fuel", "cafe"],
+    "source": "GPay / HDFC"
+  }
+]

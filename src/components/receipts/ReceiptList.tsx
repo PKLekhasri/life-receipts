@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { LifeReceipt } from '../../types/receipt';
 import { CategoryBadge } from '../common/Badge';
-import { formatDateTime, formatDate, formatTime } from '../../utils/dateUtils';
-import { MapPin, ArrowRight, Clock, DollarSign, Sparkles } from 'lucide-react';
+import { formatDate, formatTime } from '../../utils/dateUtils';
+import { MapPin, ArrowRight, Clock, Sparkles } from 'lucide-react';
 import { EmptyState } from '../common/EmptyState';
 
 interface ReceiptListProps {
@@ -11,7 +11,18 @@ interface ReceiptListProps {
   onResetFilters?: () => void;
 }
 
-export const ReceiptList: React.FC<ReceiptListProps> = ({ receipts, onSelectReceipt, onResetFilters }) => {
+export const ReceiptList: React.FC<ReceiptListProps> = React.memo(({ receipts, onSelectReceipt, onResetFilters }) => {
+  // MEMOIZE Date Grouping calculation to avoid object mutations in render
+  const groupedByDate = useMemo(() => {
+    const grouped: Record<string, LifeReceipt[]> = {};
+    receipts.forEach(r => {
+      const d = formatDate(r.timestamp);
+      grouped[d] = grouped[d] || [];
+      grouped[d].push(r);
+    });
+    return grouped;
+  }, [receipts]);
+
   if (receipts.length === 0) {
     return (
       <EmptyState
@@ -22,14 +33,6 @@ export const ReceiptList: React.FC<ReceiptListProps> = ({ receipts, onSelectRece
       />
     );
   }
-
-  // Group receipts by Date
-  const groupedByDate: Record<string, LifeReceipt[]> = {};
-  receipts.forEach(r => {
-    const d = formatDate(r.timestamp);
-    groupedByDate[d] = groupedByDate[d] || [];
-    groupedByDate[d].push(r);
-  });
 
   return (
     <div className="space-y-8">
@@ -55,7 +58,15 @@ export const ReceiptList: React.FC<ReceiptListProps> = ({ receipts, onSelectRece
                 <div
                   key={receipt.id}
                   onClick={() => onSelectReceipt(receipt)}
-                  className={`group relative glass-panel p-4 rounded-2xl border transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-indigo-500/40 hover:bg-slate-900/80 ${
+                  tabIndex={0}
+                  role="button"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelectReceipt(receipt);
+                    }
+                  }}
+                  className={`group relative glass-panel p-4 rounded-2xl border transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-indigo-500/40 hover:bg-slate-900/80 focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                     isImportant ? 'border-indigo-500/30 bg-indigo-950/20' : 'border-slate-800/80 bg-slate-900/40'
                   }`}
                 >
@@ -108,4 +119,4 @@ export const ReceiptList: React.FC<ReceiptListProps> = ({ receipts, onSelectRece
       ))}
     </div>
   );
-};
+});

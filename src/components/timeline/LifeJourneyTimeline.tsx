@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { LifeReceipt } from '../../types/receipt';
 import { StoryChapter } from '../../types/chapter';
 import { CategoryBadge } from '../common/Badge';
 import { formatDate, formatTime } from '../../utils/dateUtils';
-import { Sparkles, MapPin, ChevronRight, Calendar, ZoomIn, ZoomOut } from 'lucide-react';
+import { Sparkles, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 
 interface LifeJourneyTimelineProps {
   receipts: LifeReceipt[];
@@ -12,7 +12,7 @@ interface LifeJourneyTimelineProps {
   onSelectChapter: (chapterId: string) => void;
 }
 
-export const LifeJourneyTimeline: React.FC<LifeJourneyTimelineProps> = ({
+export const LifeJourneyTimeline: React.FC<LifeJourneyTimelineProps> = React.memo(({
   receipts,
   chapters,
   onSelectReceipt,
@@ -21,11 +21,16 @@ export const LifeJourneyTimeline: React.FC<LifeJourneyTimelineProps> = ({
   const [zoomLevel, setZoomLevel] = useState<'normal' | 'detailed'>('normal');
   const [activeReceiptId, setActiveReceiptId] = useState<string | null>(receipts[0]?.id || null);
 
-  const sortedReceipts = [...receipts].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-  );
+  // MEMOIZE sorting calculations
+  const sortedReceipts = useMemo(() => {
+    return [...receipts].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+  }, [receipts]);
 
-  const selectedReceipt = receipts.find(r => r.id === activeReceiptId) || receipts[0];
+  const selectedReceipt = useMemo(() => {
+    return receipts.find(r => r.id === activeReceiptId) || receipts[0];
+  }, [receipts, activeReceiptId]);
 
   return (
     <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-slate-800 space-y-6">
@@ -44,7 +49,8 @@ export const LifeJourneyTimeline: React.FC<LifeJourneyTimelineProps> = ({
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <button
             onClick={() => setZoomLevel(zoomLevel === 'normal' ? 'detailed' : 'normal')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-bold text-slate-300 transition-colors"
+            aria-label="Toggle timeline zoom level"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-bold text-slate-300 transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
             {zoomLevel === 'normal' ? <ZoomIn className="w-3.5 h-3.5" /> : <ZoomOut className="w-3.5 h-3.5" />}
             <span>{zoomLevel === 'normal' ? 'Detailed View' : 'Compact View'}</span>
@@ -58,7 +64,15 @@ export const LifeJourneyTimeline: React.FC<LifeJourneyTimelineProps> = ({
           <div
             key={chap.id}
             onClick={() => onSelectChapter(chap.id)}
-            className="p-3 bg-slate-900/60 hover:bg-slate-800/80 rounded-2xl border border-slate-800/80 cursor-pointer transition-all space-y-1 hover:border-indigo-500/40 group"
+            tabIndex={0}
+            role="button"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onSelectChapter(chap.id);
+              }
+            }}
+            className="p-3 bg-slate-900/60 hover:bg-slate-800/80 rounded-2xl border border-slate-800/80 cursor-pointer transition-all space-y-1 hover:border-indigo-500/40 group focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
             <div className="flex items-center justify-between text-[10px] font-mono text-indigo-400">
               <span>CHAPTER 0{chap.chapterNumber}</span>
@@ -73,13 +87,13 @@ export const LifeJourneyTimeline: React.FC<LifeJourneyTimelineProps> = ({
       </div>
 
       {/* Horizontal Interactive Timeline Scroll Area */}
-      <div className="relative pt-6 pb-4 overflow-x-auto no-scrollbar border-y border-slate-800/80">
+      <div className="relative pt-6 pb-4 overflow-x-auto no-scrollbar border-y border-slate-800/80" tabIndex={0} aria-label="Timeline scroll container">
         <div className="min-w-[800px] space-y-6 px-4">
           {/* Axis Line */}
           <div className="relative h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500 rounded-full my-8">
             {/* Timeline Nodes */}
             <div className="absolute -top-3 inset-x-0 flex justify-between items-center px-2">
-              {sortedReceipts.map((r, idx) => {
+              {sortedReceipts.map((r) => {
                 const isSelected = r.id === activeReceiptId;
                 const isKeyMoment = (r.importanceScore || 5) >= 8;
 
@@ -90,7 +104,17 @@ export const LifeJourneyTimeline: React.FC<LifeJourneyTimelineProps> = ({
                       setActiveReceiptId(r.id);
                       onSelectReceipt(r);
                     }}
-                    className="relative group cursor-pointer"
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Moment ${r.title} recorded on ${formatDate(r.timestamp)}`}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setActiveReceiptId(r.id);
+                        onSelectReceipt(r);
+                      }
+                    }}
+                    className="relative group cursor-pointer focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-full"
                   >
                     {/* Visual Node Pin */}
                     <div
@@ -141,7 +165,7 @@ export const LifeJourneyTimeline: React.FC<LifeJourneyTimelineProps> = ({
 
           <button
             onClick={() => onSelectReceipt(selectedReceipt)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all shrink-0"
+            className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all shrink-0 focus-visible:ring-2 focus-visible:ring-indigo-400"
           >
             <span>Inspect Memory</span>
             <ChevronRight className="w-4 h-4" />
@@ -150,4 +174,4 @@ export const LifeJourneyTimeline: React.FC<LifeJourneyTimelineProps> = ({
       )}
     </div>
   );
-};
+});

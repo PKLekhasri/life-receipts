@@ -10,11 +10,19 @@ export default defineConfig({
     }
   },
   server: {
-    port: 3000,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:5000',
-        changeOrigin: true
+    port: 3000
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          icons: ['lucide-react'],
+          animation: ['framer-motion']
+        }
       }
     }
   }
